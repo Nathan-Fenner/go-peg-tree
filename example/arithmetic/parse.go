@@ -2,13 +2,112 @@ package arithmetic
 
 import "fmt"
 
-func ParseExpression(input string) (float64, error) {
-	check, value := m19([]rune(input), 0)
+func (parser Parser) Expression(input string) (float64, error) {
+	check, value := parser.m19([]rune(input), 0)
 	if check.Ok {
 		return value, nil
 	}
 	var zero float64
 	return zero, fmt.Errorf("%s", check.Explain())
+}
+
+func NewParser(input string) Parser {
+	return Parser{
+		input:    []rune(input),
+		wherem13: map[int]Result{},
+		whatm13:  map[int]float64{},
+		wherem18: map[int]Result{},
+		whatm18:  map[int]float64{},
+		wherem9:  map[int]Result{},
+		whatm9:   map[int]float64{},
+		wherem12: map[int]Result{},
+		whatm12:  map[int]float64{},
+		wherem16: map[int]Result{},
+		whatm16: map[int]struct {
+			V0 float64
+			V1 string
+			V2 float64
+		}{},
+		wherem2:  map[int]Result{},
+		whatm2:   map[int]float64{},
+		wherem0:  map[int]Result{},
+		whatm0:   map[int]float64{},
+		wherem3:  map[int]Result{},
+		whatm3:   map[int]float64{},
+		wherem10: map[int]Result{},
+		whatm10:  map[int]string{},
+		wherem11: map[int]Result{},
+		whatm11:  map[int]float64{},
+		wherem19: map[int]Result{},
+		whatm19:  map[int]float64{},
+		wherem4:  map[int]Result{},
+		whatm4:   map[int]string{},
+		wherem7:  map[int]Result{},
+		whatm7:   map[int]string{},
+		wherem8:  map[int]Result{},
+		whatm8:   map[int]float64{},
+		wherem15: map[int]Result{},
+		whatm15:  map[int]string{},
+		wherem17: map[int]Result{},
+		whatm17:  map[int]float64{},
+		wherem14: map[int]Result{},
+		whatm14:  map[int]float64{},
+		wherem1:  map[int]Result{},
+		whatm1:   map[int]string{},
+		wherem5:  map[int]Result{},
+		whatm5:   map[int]float64{},
+		wherem6:  map[int]Result{},
+		whatm6:   map[int]float64{},
+	}
+}
+
+type Parser struct {
+	input []rune
+	// Internal memoization tables
+	wherem13 map[int]Result
+	whatm13  map[int]float64
+	wherem18 map[int]Result
+	whatm18  map[int]float64
+	wherem2  map[int]Result
+	whatm2   map[int]float64
+	wherem0  map[int]Result
+	whatm0   map[int]float64
+	wherem3  map[int]Result
+	whatm3   map[int]float64
+	wherem9  map[int]Result
+	whatm9   map[int]float64
+	wherem12 map[int]Result
+	whatm12  map[int]float64
+	wherem16 map[int]Result
+	whatm16  map[int]struct {
+		V0 float64
+		V1 string
+		V2 float64
+	}
+	wherem4  map[int]Result
+	whatm4   map[int]string
+	wherem7  map[int]Result
+	whatm7   map[int]string
+	wherem8  map[int]Result
+	whatm8   map[int]float64
+	wherem10 map[int]Result
+	whatm10  map[int]string
+	wherem11 map[int]Result
+	whatm11  map[int]float64
+	wherem19 map[int]Result
+	whatm19  map[int]float64
+	wherem1  map[int]Result
+	whatm1   map[int]string
+	wherem5  map[int]Result
+	whatm5   map[int]float64
+	wherem6  map[int]Result
+	whatm6   map[int]float64
+	wherem15 map[int]Result
+	whatm15  map[int]string
+	wherem17 map[int]Result
+	whatm17  map[int]float64
+	wherem14 map[int]Result
+	whatm14  map[int]float64
 }
 
 // Below is the internal generated parse structure.
@@ -72,25 +171,25 @@ func (e Exclude) Reason() string {
 	return fmt.Sprintf("but not %s", e.Message)
 }
 
-func m0(input []rune, here int) (Result, float64) {
-	return m2(input, here)
+func (parser Parser) m0(input []rune, here int) (Result, float64) {
+	return parser.m2(input, here)
 }
 
 var wherem1 = map[int]Result{}
 var whatm1 = map[int]string{}
 
-func m1(input []rune, here int) (Result, string) {
-	if result, ok := wherem1[here]; ok {
-		return result, whatm1[here]
+func (parser Parser) m1(input []rune, here int) (Result, string) {
+	if result, ok := parser.wherem1[here]; ok {
+		return result, parser.whatm1[here]
 	}
-	result, value := dm1(input, here)
-	wherem1[here] = result
-	whatm1[here] = value
+	result, value := parser.dm1(input, here)
+	parser.wherem1[here] = result
+	parser.whatm1[here] = value
 	return result, value
 }
 
 // "one"
-func dm1(input []rune, here int) (Result, string) {
+func (parser Parser) dm1(input []rune, here int) (Result, string) {
 	if here+3 > len(input) || string(input[here:here+3]) != "one" {
 		return Failure(Expected{Token: "one"}), ""
 	}
@@ -100,18 +199,18 @@ func dm1(input []rune, here int) (Result, string) {
 var wherem10 = map[int]Result{}
 var whatm10 = map[int]string{}
 
-func m10(input []rune, here int) (Result, string) {
-	if result, ok := wherem10[here]; ok {
-		return result, whatm10[here]
+func (parser Parser) m10(input []rune, here int) (Result, string) {
+	if result, ok := parser.wherem10[here]; ok {
+		return result, parser.whatm10[here]
 	}
-	result, value := dm10(input, here)
-	wherem10[here] = result
-	whatm10[here] = value
+	result, value := parser.dm10(input, here)
+	parser.wherem10[here] = result
+	parser.whatm10[here] = value
 	return result, value
 }
 
 // "four"
-func dm10(input []rune, here int) (Result, string) {
+func (parser Parser) dm10(input []rune, here int) (Result, string) {
 	if here+4 > len(input) || string(input[here:here+4]) != "four" {
 		return Failure(Expected{Token: "four"}), ""
 	}
@@ -121,19 +220,19 @@ func dm10(input []rune, here int) (Result, string) {
 var wherem11 = map[int]Result{}
 var whatm11 = map[int]float64{}
 
-func m11(input []rune, here int) (Result, float64) {
-	if result, ok := wherem11[here]; ok {
-		return result, whatm11[here]
+func (parser Parser) m11(input []rune, here int) (Result, float64) {
+	if result, ok := parser.wherem11[here]; ok {
+		return result, parser.whatm11[here]
 	}
-	result, value := dm11(input, here)
-	wherem11[here] = result
-	whatm11[here] = value
+	result, value := parser.dm11(input, here)
+	parser.wherem11[here] = result
+	parser.whatm11[here] = value
 	return result, value
 }
 
 // string go { float64 }
-func dm11(input []rune, here int) (Result, float64) {
-	check, value := m10(input, here)
+func (parser Parser) dm11(input []rune, here int) (Result, float64) {
+	check, value := parser.m10(input, here)
 	if !check.Ok {
 		var zero float64
 		return check, zero
@@ -144,42 +243,42 @@ func dm11(input []rune, here int) (Result, float64) {
 	return check, answer
 }
 
-func m12(input []rune, here int) (Result, float64) {
-	return m13(input, here)
+func (parser Parser) m12(input []rune, here int) (Result, float64) {
+	return parser.m13(input, here)
 }
 
 var wherem13 = map[int]Result{}
 var whatm13 = map[int]float64{}
 
-func m13(input []rune, here int) (Result, float64) {
-	if result, ok := wherem13[here]; ok {
-		return result, whatm13[here]
+func (parser Parser) m13(input []rune, here int) (Result, float64) {
+	if result, ok := parser.wherem13[here]; ok {
+		return result, parser.whatm13[here]
 	}
-	result, value := dm13(input, here)
-	wherem13[here] = result
-	whatm13[here] = value
+	result, value := parser.dm13(input, here)
+	parser.wherem13[here] = result
+	parser.whatm13[here] = value
 	return result, value
 }
 
 // (root one / root two / root three / root four)
-func dm13(input []rune, here int) (Result, float64) {
+func (parser Parser) dm13(input []rune, here int) (Result, float64) {
 	notes := []Reject{}
-	if next, value := m0(input, here); next.Ok {
+	if next, value := parser.m0(input, here); next.Ok {
 		return next, value
 	} else {
 		notes = append(notes, next.Expected...)
 	}
-	if next, value := m3(input, here); next.Ok {
+	if next, value := parser.m3(input, here); next.Ok {
 		return next, value
 	} else {
 		notes = append(notes, next.Expected...)
 	}
-	if next, value := m6(input, here); next.Ok {
+	if next, value := parser.m6(input, here); next.Ok {
 		return next, value
 	} else {
 		notes = append(notes, next.Expected...)
 	}
-	if next, value := m9(input, here); next.Ok {
+	if next, value := parser.m9(input, here); next.Ok {
 		return next, value
 	} else {
 		notes = append(notes, next.Expected...)
@@ -188,25 +287,25 @@ func dm13(input []rune, here int) (Result, float64) {
 	return Failure(notes...), zero
 }
 
-func m14(input []rune, here int) (Result, float64) {
-	return m18(input, here)
+func (parser Parser) m14(input []rune, here int) (Result, float64) {
+	return parser.m18(input, here)
 }
 
 var wherem15 = map[int]Result{}
 var whatm15 = map[int]string{}
 
-func m15(input []rune, here int) (Result, string) {
-	if result, ok := wherem15[here]; ok {
-		return result, whatm15[here]
+func (parser Parser) m15(input []rune, here int) (Result, string) {
+	if result, ok := parser.wherem15[here]; ok {
+		return result, parser.whatm15[here]
 	}
-	result, value := dm15(input, here)
-	wherem15[here] = result
-	whatm15[here] = value
+	result, value := parser.dm15(input, here)
+	parser.wherem15[here] = result
+	parser.whatm15[here] = value
 	return result, value
 }
 
 // "+"
-func dm15(input []rune, here int) (Result, string) {
+func (parser Parser) dm15(input []rune, here int) (Result, string) {
 	if here+1 > len(input) || string(input[here:here+1]) != "+" {
 		return Failure(Expected{Token: "+"}), ""
 	}
@@ -220,22 +319,22 @@ var whatm16 = map[int]struct {
 	V2 float64
 }{}
 
-func m16(input []rune, here int) (Result, struct {
+func (parser Parser) m16(input []rune, here int) (Result, struct {
 	V0 float64
 	V1 string
 	V2 float64
 }) {
-	if result, ok := wherem16[here]; ok {
-		return result, whatm16[here]
+	if result, ok := parser.wherem16[here]; ok {
+		return result, parser.whatm16[here]
 	}
-	result, value := dm16(input, here)
-	wherem16[here] = result
-	whatm16[here] = value
+	result, value := parser.dm16(input, here)
+	parser.wherem16[here] = result
+	parser.whatm16[here] = value
 	return result, value
 }
 
 // root number "+" root sum
-func dm16(input []rune, here int) (Result, struct {
+func (parser Parser) dm16(input []rune, here int) (Result, struct {
 	V0 float64
 	V1 string
 	V2 float64
@@ -245,7 +344,7 @@ func dm16(input []rune, here int) (Result, struct {
 		V1 string
 		V2 float64
 	}{}
-	if next, value := m12(input, here); next.Ok {
+	if next, value := parser.m12(input, here); next.Ok {
 		here = next.At
 		result.V0 = value
 	} else {
@@ -255,7 +354,7 @@ func dm16(input []rune, here int) (Result, struct {
 			V2 float64
 		}{}
 	}
-	if next, value := m15(input, here); next.Ok {
+	if next, value := parser.m15(input, here); next.Ok {
 		here = next.At
 		result.V1 = value
 	} else {
@@ -265,7 +364,7 @@ func dm16(input []rune, here int) (Result, struct {
 			V2 float64
 		}{}
 	}
-	if next, value := m14(input, here); next.Ok {
+	if next, value := parser.m14(input, here); next.Ok {
 		here = next.At
 		result.V2 = value
 	} else {
@@ -281,19 +380,19 @@ func dm16(input []rune, here int) (Result, struct {
 var wherem17 = map[int]Result{}
 var whatm17 = map[int]float64{}
 
-func m17(input []rune, here int) (Result, float64) {
-	if result, ok := wherem17[here]; ok {
-		return result, whatm17[here]
+func (parser Parser) m17(input []rune, here int) (Result, float64) {
+	if result, ok := parser.wherem17[here]; ok {
+		return result, parser.whatm17[here]
 	}
-	result, value := dm17(input, here)
-	wherem17[here] = result
-	whatm17[here] = value
+	result, value := parser.dm17(input, here)
+	parser.wherem17[here] = result
+	parser.whatm17[here] = value
 	return result, value
 }
 
 // struct{V0 float64;V1 string;V2 float64;} go { float64 }
-func dm17(input []rune, here int) (Result, float64) {
-	check, value := m16(input, here)
+func (parser Parser) dm17(input []rune, here int) (Result, float64) {
+	check, value := parser.m16(input, here)
 	if !check.Ok {
 		var zero float64
 		return check, zero
@@ -311,25 +410,25 @@ func dm17(input []rune, here int) (Result, float64) {
 var wherem18 = map[int]Result{}
 var whatm18 = map[int]float64{}
 
-func m18(input []rune, here int) (Result, float64) {
-	if result, ok := wherem18[here]; ok {
-		return result, whatm18[here]
+func (parser Parser) m18(input []rune, here int) (Result, float64) {
+	if result, ok := parser.wherem18[here]; ok {
+		return result, parser.whatm18[here]
 	}
-	result, value := dm18(input, here)
-	wherem18[here] = result
-	whatm18[here] = value
+	result, value := parser.dm18(input, here)
+	parser.wherem18[here] = result
+	parser.whatm18[here] = value
 	return result, value
 }
 
 // (struct{V0 float64;V1 string;V2 float64;} go { float64 } / root number)
-func dm18(input []rune, here int) (Result, float64) {
+func (parser Parser) dm18(input []rune, here int) (Result, float64) {
 	notes := []Reject{}
-	if next, value := m17(input, here); next.Ok {
+	if next, value := parser.m17(input, here); next.Ok {
 		return next, value
 	} else {
 		notes = append(notes, next.Expected...)
 	}
-	if next, value := m12(input, here); next.Ok {
+	if next, value := parser.m12(input, here); next.Ok {
 		return next, value
 	} else {
 		notes = append(notes, next.Expected...)
@@ -338,26 +437,26 @@ func dm18(input []rune, here int) (Result, float64) {
 	return Failure(notes...), zero
 }
 
-func m19(input []rune, here int) (Result, float64) {
-	return m14(input, here)
+func (parser Parser) m19(input []rune, here int) (Result, float64) {
+	return parser.m14(input, here)
 }
 
 var wherem2 = map[int]Result{}
 var whatm2 = map[int]float64{}
 
-func m2(input []rune, here int) (Result, float64) {
-	if result, ok := wherem2[here]; ok {
-		return result, whatm2[here]
+func (parser Parser) m2(input []rune, here int) (Result, float64) {
+	if result, ok := parser.wherem2[here]; ok {
+		return result, parser.whatm2[here]
 	}
-	result, value := dm2(input, here)
-	wherem2[here] = result
-	whatm2[here] = value
+	result, value := parser.dm2(input, here)
+	parser.wherem2[here] = result
+	parser.whatm2[here] = value
 	return result, value
 }
 
 // string go { float64 }
-func dm2(input []rune, here int) (Result, float64) {
-	check, value := m1(input, here)
+func (parser Parser) dm2(input []rune, here int) (Result, float64) {
+	check, value := parser.m1(input, here)
 	if !check.Ok {
 		var zero float64
 		return check, zero
@@ -368,25 +467,25 @@ func dm2(input []rune, here int) (Result, float64) {
 	return check, answer
 }
 
-func m3(input []rune, here int) (Result, float64) {
-	return m5(input, here)
+func (parser Parser) m3(input []rune, here int) (Result, float64) {
+	return parser.m5(input, here)
 }
 
 var wherem4 = map[int]Result{}
 var whatm4 = map[int]string{}
 
-func m4(input []rune, here int) (Result, string) {
-	if result, ok := wherem4[here]; ok {
-		return result, whatm4[here]
+func (parser Parser) m4(input []rune, here int) (Result, string) {
+	if result, ok := parser.wherem4[here]; ok {
+		return result, parser.whatm4[here]
 	}
-	result, value := dm4(input, here)
-	wherem4[here] = result
-	whatm4[here] = value
+	result, value := parser.dm4(input, here)
+	parser.wherem4[here] = result
+	parser.whatm4[here] = value
 	return result, value
 }
 
 // "two"
-func dm4(input []rune, here int) (Result, string) {
+func (parser Parser) dm4(input []rune, here int) (Result, string) {
 	if here+3 > len(input) || string(input[here:here+3]) != "two" {
 		return Failure(Expected{Token: "two"}), ""
 	}
@@ -396,19 +495,19 @@ func dm4(input []rune, here int) (Result, string) {
 var wherem5 = map[int]Result{}
 var whatm5 = map[int]float64{}
 
-func m5(input []rune, here int) (Result, float64) {
-	if result, ok := wherem5[here]; ok {
-		return result, whatm5[here]
+func (parser Parser) m5(input []rune, here int) (Result, float64) {
+	if result, ok := parser.wherem5[here]; ok {
+		return result, parser.whatm5[here]
 	}
-	result, value := dm5(input, here)
-	wherem5[here] = result
-	whatm5[here] = value
+	result, value := parser.dm5(input, here)
+	parser.wherem5[here] = result
+	parser.whatm5[here] = value
 	return result, value
 }
 
 // string go { float64 }
-func dm5(input []rune, here int) (Result, float64) {
-	check, value := m4(input, here)
+func (parser Parser) dm5(input []rune, here int) (Result, float64) {
+	check, value := parser.m4(input, here)
 	if !check.Ok {
 		var zero float64
 		return check, zero
@@ -419,25 +518,25 @@ func dm5(input []rune, here int) (Result, float64) {
 	return check, answer
 }
 
-func m6(input []rune, here int) (Result, float64) {
-	return m8(input, here)
+func (parser Parser) m6(input []rune, here int) (Result, float64) {
+	return parser.m8(input, here)
 }
 
 var wherem7 = map[int]Result{}
 var whatm7 = map[int]string{}
 
-func m7(input []rune, here int) (Result, string) {
-	if result, ok := wherem7[here]; ok {
-		return result, whatm7[here]
+func (parser Parser) m7(input []rune, here int) (Result, string) {
+	if result, ok := parser.wherem7[here]; ok {
+		return result, parser.whatm7[here]
 	}
-	result, value := dm7(input, here)
-	wherem7[here] = result
-	whatm7[here] = value
+	result, value := parser.dm7(input, here)
+	parser.wherem7[here] = result
+	parser.whatm7[here] = value
 	return result, value
 }
 
 // "three"
-func dm7(input []rune, here int) (Result, string) {
+func (parser Parser) dm7(input []rune, here int) (Result, string) {
 	if here+5 > len(input) || string(input[here:here+5]) != "three" {
 		return Failure(Expected{Token: "three"}), ""
 	}
@@ -447,19 +546,19 @@ func dm7(input []rune, here int) (Result, string) {
 var wherem8 = map[int]Result{}
 var whatm8 = map[int]float64{}
 
-func m8(input []rune, here int) (Result, float64) {
-	if result, ok := wherem8[here]; ok {
-		return result, whatm8[here]
+func (parser Parser) m8(input []rune, here int) (Result, float64) {
+	if result, ok := parser.wherem8[here]; ok {
+		return result, parser.whatm8[here]
 	}
-	result, value := dm8(input, here)
-	wherem8[here] = result
-	whatm8[here] = value
+	result, value := parser.dm8(input, here)
+	parser.wherem8[here] = result
+	parser.whatm8[here] = value
 	return result, value
 }
 
 // string go { float64 }
-func dm8(input []rune, here int) (Result, float64) {
-	check, value := m7(input, here)
+func (parser Parser) dm8(input []rune, here int) (Result, float64) {
+	check, value := parser.m7(input, here)
 	if !check.Ok {
 		var zero float64
 		return check, zero
@@ -470,6 +569,6 @@ func dm8(input []rune, here int) (Result, float64) {
 	return check, answer
 }
 
-func m9(input []rune, here int) (Result, float64) {
-	return m11(input, here)
+func (parser Parser) m9(input []rune, here int) (Result, float64) {
+	return parser.m11(input, here)
 }

@@ -48,18 +48,18 @@ func (state *State) DefineWithName(template string, name string, returns string,
 var where` + name + ` = map[int]Result{}
 var what` + name + ` = map[int]` + returns + `{}
 
-func ` + name + `(input []rune, here int) (Result, ` + returns + `) {
-	if result, ok := where` + name + `[here]; ok {
-		return result, what` + name + `[here]
+func (parser Parser) ` + name + `(input []rune, here int) (Result, ` + returns + `) {
+	if result, ok := parser.where` + name + `[here]; ok {
+		return result, parser.what` + name + `[here]
 	}
-	result, value := d` + name + `(input, here)
-	where` + name + `[here] = result
-	what` + name + `[here] = value
+	result, value := parser.d` + name + `(input, here)
+	parser.where` + name + `[here] = result
+	parser.what` + name + `[here] = value
 	return result, value
 }
 
 // ` + detail + `
-func d` + name + `(input []rune, here int) (Result, ` + returns + `) {` +
+func (parser Parser) d` + name + `(input []rune, here int) (Result, ` + returns + `) {` +
 			strings.Replace(template, "\n", "\n\t", -1) + `
 }`}
 }
@@ -69,8 +69,8 @@ func (state *State) DefineRoot(root string, peg Peg) {
 	state.Definitions[name] = Definition{
 		Result: peg.TypeName(),
 		Body: `
-func ` + name + ` (input []rune, here int) (Result, ` + peg.TypeName() + `) {
-  return ` + state.Define(peg) + `(input, here)
+func (parser Parser)` + name + ` (input []rune, here int) (Result, ` + peg.TypeName() + `) {
+  return parser.` + state.Define(peg) + `(input, here)
 }
 `,
 	}
@@ -87,7 +87,7 @@ func (state *State) Define(peg Peg) string {
 }
 func (state *State) DefineIn(peg Peg, source string) string {
 	id := state.Define(peg)
-	return fmt.Sprintf(source, id)
+	return fmt.Sprintf(source, "parser."+id)
 }
 
 func (state *State) Generate(packageName string) string {
@@ -106,8 +106,8 @@ import "fmt"
 		definition := state.Definitions[state.Roots[root]]
 		id := state.GetRootID(root)
 		file += `
-func Parse` + root + `(input string) (` + definition.Result + `, error) {
-	check, value := ` + id + `([]rune(input), 0)
+func (parser Parser) ` + root + `(input string) (` + definition.Result + `, error) {
+	check, value := parser.` + id + `([]rune(input), 0)
 	if check.Ok {
 		return value, nil
 	}
@@ -115,6 +115,37 @@ func Parse` + root + `(input string) (` + definition.Result + `, error) {
 	return zero, fmt.Errorf("%s", check.Explain())
 }`
 	}
+
+	//////////////////////////////
+
+	file += `
+
+func NewParser(input string) Parser {
+	return Parser {
+		input: []rune(input),`
+
+	for i, definition := range state.Definitions {
+		file += `
+		where` + i + `: map[int]Result{},
+		what` + i + `:  map[int]` + definition.Result + `{},`
+	}
+	file += "\n\t}\n}\n\n"
+
+	///////////////////////////
+	file += `
+
+type Parser struct {
+	input []rune
+	// Internal memoization tables`
+
+	for i, definition := range state.Definitions {
+		file += `
+	where` + i + ` map[int]Result
+	what` + i + `  map[int]` + definition.Result + ``
+	}
+	file += "}\n"
+
+	/////////////////////////////
 
 	file += `
 
