@@ -70,3 +70,100 @@ tokens that could follow wherever you are. In addition, you can "alias" certain
 nodes so that they'll be identified by a name, rather than listing the tokens
 that they expect to come next. This is useful, for example, for abstracting the
 contents of an "identifier" definition away from its actual presence.
+
+Type safe?
+==========
+Every PEG expression results in a value of a specific type. These can be
+combined by Go expressions into new values. For example, we can define some of
+our types like this (the rest are left to the reader's imagination):
+
+```
+type Argument {
+  Name string
+  Type Type
+}
+
+type Func struct {
+  Name      string      // the name of the function
+  Arguments []Argument  // the arguments to the function
+  Return    *Type       // the (optional) return type
+  Body      []Statement // the body of the function
+}
+
+```
+
+Now our parser for `func` will look something like:
+
+```
+argument Argument <- identifier type go { Argument{arg.V0, arg.V1} };
+
+arguments []Argument <-
+  ( argument "," arguments go { append(argument, arguments...) } )
+  /
+  go { []Argument{} };
+
+
+func Func <-
+  "func" identifier "(" arguments ")" type? "{"
+    statement*
+  "}"
+  go { buildFunc(arg) };
+```
+
+Then our `buildFunc` function has the following signature:
+
+```
+func buildFunc(arg struct{
+  V0 string      // "func"
+  V1 string      // identifier
+  V2 string      // "("
+  V3 []Argument  // arguments
+  V4 string      // ")"
+  V5 *Type       // optional return type
+  V6 string      // "{"
+  V7 []Statement // the body of the function
+  V8 string      // "}"
+}) Func {
+  return Func {
+    Name:      arg.V1,
+    Arguments: arg.V3,
+    Return:    arg.V5,
+    Body:      arg.V7,
+  }
+}
+```
+
+We can make this a lot more beautiful with a few alterations to the syntax in
+the grammar definition:
+
+```
+argument Argument <- identifier type go { Argument{arg.V0, arg.V1} };
+
+arguments []Argument <-
+  ( argument "," arguments go { append(argument, arguments...) } )
+  /
+  go { []Argument{} };
+
+
+func Func <-
+  "func" name:identifier "(" arguments:arguments ")" returns:(type?) "{"
+    body:statement*
+  "}"
+  go { buildFunc(arg) };
+
+// so now we have
+
+func buildFunc(arg struct{
+  name      string      // identifier
+  arguments []Argument  // arguments
+  returns   *Type       // optional return type
+  body      []Statement // the body of the function
+}) Func {
+  return Func {
+    Name:      arg.name,
+    Arguments: arg.arguments,
+    Return:    arg.returns,
+    Body:      arg.body,
+  }
+}
+```
