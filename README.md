@@ -78,6 +78,10 @@ combined by Go expressions into new values. For example, we can define some of
 our types like this (the rest are left to the reader's imagination):
 
 ```
+
+type Type ...      // exercise for the reader
+type Statement ... // exercise for the reader
+
 type Argument {
   Name string
   Type Type
@@ -95,6 +99,13 @@ type Func struct {
 Now our parser for `func` will look something like:
 
 ```
+
+identifier string <- /** exercise **/;
+
+type Type <- /** exercise **/;
+
+statement Statement <- /** exercise **/;
+
 argument Argument <- identifier type go { Argument{arg.V0, arg.V1} };
 
 arguments []Argument <-
