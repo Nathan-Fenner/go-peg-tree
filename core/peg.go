@@ -15,8 +15,8 @@ type Literal string
 
 func (l Literal) Template(state *State) string {
 	return fmt.Sprintf(`
-if here+%d >= len(input) || string(input[here:here+%d]) != %q {
-	return Failure(Expected{Token: %q, At: here}), ""
+if here+%d > len(input) || string(input[here:here+%d]) != %q {
+	return Failure(Expected{Token: %q}), ""
 }
 return Success(here + %d), %q`, len([]rune(string(l))), len([]rune(string(l))), string(l), string(l), len([]rune(string(l))), string(l))
 }
@@ -33,7 +33,7 @@ func (s Sequence) Template(state *State) string {
 	template := "\nresult := " + s.TypeName() + "{}"
 	for i := range s {
 		template += state.DefineIn(s[i], `
-if next, value := match%s(input, here); next.Ok {
+if next, value := %s(input, here); next.Ok {
 	here = next.At
 	result.V`+fmt.Sprintf("%d", i)+` = value
 } else {
@@ -64,7 +64,7 @@ func (a Alternate) Template(state *State) string {
 	template := "\nnotes := []Reject{}"
 	for i := range a {
 		template += state.DefineIn(a[i], `
-if next, value := match%s(input, here); next.Ok {
+if next, value := %s(input, here); next.Ok {
 	return next, value
 } else {
 	notes = append(notes, next.Expected...)
@@ -92,7 +92,7 @@ func (s Star) Template(state *State) string {
 	return state.DefineIn(s.Argument, `
 result := []`+s.Argument.TypeName()+`{}
 for {
-	next, value := match%s(input, here)
+	next, value := %s(input, here)
 	if !next.Ok {
 		return Success(here), result
 	}
@@ -113,14 +113,11 @@ type Not struct {
 
 func (n Not) Template(state *State) string {
 	return state.DefineIn(n.Argument, `
-check, _ := match%s(input, here)
+check, _ := %s(input, here)
 if !check.Ok {
   return Success(here), struct{}{}
 }
-return Failure(Exclude{
-  At:      here,
-  Message: `+n.Argument.String()+`,
-}), struct{}{}`)
+return Failure(Exclude{`+n.Argument.String()+`}), struct{}{}`)
 }
 func (n Not) String() string {
 	return "not (" + n.Argument.String() + ")"
@@ -135,7 +132,7 @@ type And struct {
 
 func (and And) Template(state *State) string {
 	return state.DefineIn(and.Argument, `
-check, value := match%s(input, here)
+check, value := %s(input, here)
 if !check.Ok {
 	var zero `+and.Argument.TypeName()+`
 	return check, zero
@@ -155,11 +152,10 @@ type Root struct {
 }
 
 func (root Root) Template(state *State) string {
-	return `
-return matchroot` + root.Name + "(input, here)"
+	return `/* illegal - roots should not be generated */`
 }
 func (root Root) String() string {
-	return root.Name
+	return "root " + root.Name
 }
 func (root Root) TypeName() string {
 	return root.Type
@@ -173,7 +169,7 @@ type Go struct {
 
 func (g Go) Template(state *State) string {
 	return state.DefineIn(g.Argument, `
-check, value := match%s(input, here)
+check, value := %s(input, here)
 if !check.Ok {
 	var zero `+g.Returns+`
 	return check, zero
