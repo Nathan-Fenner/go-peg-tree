@@ -11,19 +11,38 @@ func NewState() State {
 	return State{
 		UID:         0,
 		Roots:       map[string]string{},
+		Imports:     []string{"fmt"},
 		Definitions: map[string]Definition{},
 	}
 }
 
 type Definition struct {
-	Result string
-	Body   string
+	Resources []Resource
+	Result    string
+	Body      string
 }
 
 type State struct {
-	UID         int
-	Roots       map[string]string
-	Definitions map[string]Definition
+	UID         int                   // For assigning unique identifiers
+	Roots       map[string]string     // The names roots
+	Imports     []string              // The imports collectively required
+	Definitions map[string]Definition // Definitions (from UID, not name)
+	Current     string                // Name of current unit (for resource handling)
+}
+
+func (state *State) AddImport(name string) {
+	for i := range state.Imports {
+		if state.Imports[i] == name {
+			return
+		}
+	}
+	state.Imports = append(state.Imports, name)
+}
+
+func (state *State) AddImports(names []string) {
+	for i := range names {
+		state.AddImport(names[i])
+	}
 }
 
 func (state *State) UniqueID() string {
@@ -41,14 +60,15 @@ func (state *State) GetRootID(root string) string {
 	return state.Roots[root]
 }
 
-func (state *State) DefineWithName(template string, name string, returns string, detail string) {
+func (state *State) DefineWithName(template string, name string, returns string, detail string, resources []Resource) {
 	state.Definitions[name] = Definition{
-		Result: returns,
+		Resources: resources,
+		Result:    returns,
 		Body: `
 var where` + name + ` = map[int]Result{}
 var what` + name + ` = map[int]` + returns + `{}
 
-func (parser Parser) ` + name + `(input []rune, here int) (Result, ` + returns + `) {
+func (parser Parser) ` + name + `(input []byte, here int) (Result, ` + returns + `) {
 	if result, ok := parser.where` + name + `[here]; ok {
 		return result, parser.what` + name + `[here]
 	}
@@ -59,7 +79,7 @@ func (parser Parser) ` + name + `(input []rune, here int) (Result, ` + returns +
 }
 
 // ` + detail + `
-func (parser Parser) d` + name + `(input []rune, here int) (Result, ` + returns + `) {` +
+func (parser Parser) d` + name + `(input []byte, here int) (Result, ` + returns + `) {` +
 			strings.Replace(template, "\n", "\n\t", -1) + `
 }`}
 }
@@ -69,7 +89,7 @@ func (state *State) DefineRoot(root string, peg Peg) {
 	state.Definitions[name] = Definition{
 		Result: peg.TypeName(),
 		Body: `
-func (parser Parser)` + name + ` (input []rune, here int) (Result, ` + peg.TypeName() + `) {
+func (parser Parser)` + name + ` (input []byte, here int) (Result, ` + peg.TypeName() + `) {
   return parser.` + state.Define(peg) + `(input, here)
 }
 `,
@@ -77,12 +97,15 @@ func (parser Parser)` + name + ` (input []rune, here int) (Result, ` + peg.TypeN
 }
 
 func (state *State) Define(peg Peg) string {
+	context := peg.Context()
+	state.AddImports(context.Imports)
 	if root, ok := peg.(Root); ok {
 		return state.GetRootID(root.Name)
 	}
-	template := peg.Template(state)
 	id := state.UniqueID()
-	state.DefineWithName(template, id, peg.TypeName(), peg.String())
+	state.Current = id
+	template := peg.Template(state)
+	state.DefineWithName(template, id, peg.TypeName(), peg.String(), context.Resources)
 	return id
 }
 func (state *State) DefineIn(peg Peg, source string) string {
@@ -93,8 +116,12 @@ func (state *State) DefineIn(peg Peg, source string) string {
 func (state *State) Generate(packageName string) string {
 	file := `package ` + packageName + `
 
-import "fmt"
 `
+
+	sort.Strings(state.Imports)
+	for _, name := range state.Imports {
+		file += fmt.Sprintf("\nimport %q", name)
+	}
 
 	exported := []string{}
 	for root, _ := range state.Roots {
@@ -107,7 +134,7 @@ import "fmt"
 		id := state.GetRootID(root)
 		file += `
 func (parser Parser) ` + root + `(input string) (` + definition.Result + `, error) {
-	check, value := parser.` + id + `([]rune(input), 0)
+	check, value := parser.` + id + `([]byte(input), 0)
 	if check.Ok {
 		return value, nil
 	}
@@ -122,12 +149,15 @@ func (parser Parser) ` + root + `(input string) (` + definition.Result + `, erro
 
 func NewParser(input string) Parser {
 	return Parser {
-		input: []rune(input),`
+		input: []byte(input),`
 
 	for i, definition := range state.Definitions {
 		file += `
 		where` + i + `: map[int]Result{},
 		what` + i + `:  map[int]` + definition.Result + `{},`
+		for _, resource := range definition.Resources {
+			file += "\n\t\tresource" + i + resource.Name + ": " + resource.Expression + ","
+		}
 	}
 	file += "\n\t}\n}\n\n"
 
@@ -135,13 +165,16 @@ func NewParser(input string) Parser {
 	file += `
 
 type Parser struct {
-	input []rune
+	input []byte
 	// Internal memoization tables`
 
 	for i, definition := range state.Definitions {
 		file += `
 	where` + i + ` map[int]Result
-	what` + i + `  map[int]` + definition.Result + ``
+	what` + i + `  map[int]` + definition.Result
+		for _, resource := range definition.Resources {
+			file += "\n" + i + resource.Name + " " + resource.Type
+		}
 	}
 	file += "}\n"
 

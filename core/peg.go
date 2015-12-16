@@ -5,10 +5,22 @@ import (
 	"strings"
 )
 
+type Resource struct {
+	Name       string
+	Type       string
+	Expression string
+}
+
+type Context struct {
+	Resources []Resource
+	Imports   []string
+}
+
 type Peg interface {
 	Template(*State) string
 	String() string
 	TypeName() string
+	Context() Context
 }
 
 type Literal string
@@ -18,13 +30,16 @@ func (l Literal) Template(state *State) string {
 if here+%d > len(input) || string(input[here:here+%d]) != %q {
 	return Failure(Expected{Token: %q}), ""
 }
-return Success(here + %d), %q`, len([]rune(string(l))), len([]rune(string(l))), string(l), string(l), len([]rune(string(l))), string(l))
+return Success(here + %d), %q`, len(string(l)), len(string(l)), string(l), string(l), len(string(l)), string(l))
 }
 func (l Literal) String() string {
 	return fmt.Sprintf("%q", string(l))
 }
 func (l Literal) TypeName() string {
 	return "string"
+}
+func (l Literal) Context() Context {
+	return Context{}
 }
 
 type Sequence []Peg
@@ -57,6 +72,9 @@ func (s Sequence) TypeName() string {
 	}
 	return name + "}"
 }
+func (s Sequence) Context() Context {
+	return Context{}
+}
 
 type Alternate []Peg
 
@@ -83,6 +101,9 @@ func (a Alternate) String() string {
 func (a Alternate) TypeName() string {
 	return a[0].TypeName()
 }
+func (a Alternate) Context() Context {
+	return Context{}
+}
 
 type Star struct {
 	Argument Peg
@@ -106,6 +127,9 @@ func (s Star) String() string {
 func (s Star) TypeName() string {
 	return "[]" + s.Argument.TypeName()
 }
+func (s Star) Context() Context {
+	return Context{}
+}
 
 type Not struct {
 	Argument Peg
@@ -124,6 +148,9 @@ func (n Not) String() string {
 }
 func (n Not) TypeName() string {
 	return "struct{}"
+}
+func (n Not) Context() Context {
+	return Context{}
 }
 
 type And struct {
@@ -145,6 +172,9 @@ func (and And) String() string {
 func (and And) TypeName() string {
 	return and.Argument.TypeName()
 }
+func (and And) Context() Context {
+	return Context{}
+}
 
 type Root struct {
 	Name string
@@ -159,6 +189,9 @@ func (root Root) String() string {
 }
 func (root Root) TypeName() string {
 	return root.Type
+}
+func (root Root) Context() Context {
+	return Context{}
 }
 
 type Go struct {
@@ -184,4 +217,34 @@ func (g Go) String() string {
 }
 func (g Go) TypeName() string {
 	return g.Returns
+}
+func (g Go) Context() Context {
+	return Context{}
+}
+
+type Regex struct {
+	Regex string
+}
+
+func (r Regex) Template(state *State) string {
+	return fmt.Sprintf(`
+match := parser.resource%sRegex.Index(input[here:])
+if match == nil || match[0] != 0 {
+	return Failure(Expected{Token: "regex " + %q})
+}
+end := match[1]
+return Success(here + end), string(input[here : here+end])
+`, state.Current, r.Regex)
+}
+func (r Regex) String() string {
+	return fmt.Sprintf("regex %q", r.Regex)
+}
+func (r Regex) TypeName() string {
+	return "string"
+}
+func (r Regex) Context() Context {
+	return Context{
+		Imports:   []string{"regexp"},
+		Resources: []Resource{{Name: "Regex", Type: "*regexp.Regexp", Expression: fmt.Sprintf(`regexp.MustCompile(%q)`, r.Regex)}},
+	}
 }
