@@ -27,7 +27,6 @@ type State struct {
 	Roots       map[string]string     // The names roots
 	Imports     []string              // The imports collectively required
 	Definitions map[string]Definition // Definitions (from UID, not name)
-	Current     string                // Name of current unit (for resource handling)
 }
 
 func (state *State) AddImport(name string) {
@@ -89,7 +88,7 @@ func (state *State) DefineRoot(root string, peg Peg) {
 	state.Definitions[name] = Definition{
 		Result: peg.TypeName(),
 		Body: `
-func (parser Parser)` + name + ` (input []byte, here int) (Result, ` + peg.TypeName() + `) {
+func (parser Parser) ` + name + `(input []byte, here int) (Result, ` + peg.TypeName() + `) {
   return parser.` + state.Define(peg) + `(input, here)
 }
 `,
@@ -103,8 +102,7 @@ func (state *State) Define(peg Peg) string {
 		return state.GetRootID(root.Name)
 	}
 	id := state.UniqueID()
-	state.Current = id
-	template := peg.Template(state)
+	template := peg.Template(state, id)
 	state.DefineWithName(template, id, peg.TypeName(), peg.String(), context.Resources)
 	return id
 }
@@ -133,8 +131,8 @@ func (state *State) Generate(packageName string) string {
 		definition := state.Definitions[state.Roots[root]]
 		id := state.GetRootID(root)
 		file += `
-func (parser Parser) ` + root + `(input string) (` + definition.Result + `, error) {
-	check, value := parser.` + id + `([]byte(input), 0)
+func (parser Parser) ` + root + `() (` + definition.Result + `, error) {
+	check, value := parser.` + id + `([]byte(parser.input), 0)
 	if check.Ok {
 		return value, nil
 	}
@@ -173,7 +171,7 @@ type Parser struct {
 	where` + i + ` map[int]Result
 	what` + i + `  map[int]` + definition.Result
 		for _, resource := range definition.Resources {
-			file += "\n" + i + resource.Name + " " + resource.Type
+			file += "\nresource" + i + resource.Name + " " + resource.Type
 		}
 	}
 	file += "}\n"

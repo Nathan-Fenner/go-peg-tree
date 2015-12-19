@@ -17,7 +17,7 @@ type Context struct {
 }
 
 type Peg interface {
-	Template(*State) string
+	Template(*State, string) string
 	String() string
 	TypeName() string
 	Context() Context
@@ -25,7 +25,7 @@ type Peg interface {
 
 type Literal string
 
-func (l Literal) Template(state *State) string {
+func (l Literal) Template(state *State, self string) string {
 	return fmt.Sprintf(`
 if here+%d > len(input) || string(input[here:here+%d]) != %q {
 	return Failure(Expected{Token: %q}), ""
@@ -44,7 +44,7 @@ func (l Literal) Context() Context {
 
 type Sequence []Peg
 
-func (s Sequence) Template(state *State) string {
+func (s Sequence) Template(state *State, self string) string {
 	template := "\nresult := " + s.TypeName() + "{}"
 	for i := range s {
 		template += state.DefineIn(s[i], `
@@ -78,15 +78,14 @@ func (s Sequence) Context() Context {
 
 type Alternate []Peg
 
-func (a Alternate) Template(state *State) string {
-	template := "\nnotes := []Reject{}"
+func (a Alternate) Template(state *State, self string) string {
+	template := "\nnotes := []Reject{}\nvar next Result\n"
 	for i := range a {
 		template += state.DefineIn(a[i], `
 if next, value := %s(input, here); next.Ok {
 	return next, value
-} else {
-	notes = append(notes, next.Expected...)
-}`)
+}
+notes = append(notes, next.Expected...)`)
 	}
 	template += "\nvar zero " + a.TypeName() + "\nreturn Failure(notes...), zero"
 	return template
@@ -109,7 +108,7 @@ type Star struct {
 	Argument Peg
 }
 
-func (s Star) Template(state *State) string {
+func (s Star) Template(state *State, self string) string {
 	return state.DefineIn(s.Argument, `
 result := []`+s.Argument.TypeName()+`{}
 for {
@@ -122,7 +121,7 @@ for {
 }`)
 }
 func (s Star) String() string {
-	return "(" + s.String() + ")*"
+	return "(" + s.Argument.String() + ")*"
 }
 func (s Star) TypeName() string {
 	return "[]" + s.Argument.TypeName()
@@ -131,17 +130,46 @@ func (s Star) Context() Context {
 	return Context{}
 }
 
+type Plus struct {
+	Argument Peg
+}
+
+func (p Plus) Template(state *State, self string) string {
+	return state.DefineIn(p.Argument, `
+result := []`+p.Argument.TypeName()+`{}
+for {
+	next, value := %s(input, here)
+	if !next.Ok {
+		if len(result) == 0 {
+			return next, nil
+		}
+		return Success(here), result
+	}
+	here = next.At
+	result = append(result, value)
+}`)
+}
+func (p Plus) String() string {
+	return "(" + p.Argument.String() + ")+"
+}
+func (p Plus) TypeName() string {
+	return "[]" + p.Argument.TypeName()
+}
+func (p Plus) Context() Context {
+	return Context{}
+}
+
 type Not struct {
 	Argument Peg
 }
 
-func (n Not) Template(state *State) string {
+func (n Not) Template(state *State, self string) string {
 	return state.DefineIn(n.Argument, `
 check, _ := %s(input, here)
 if !check.Ok {
   return Success(here), struct{}{}
 }
-return Failure(Exclude{`+n.Argument.String()+`}), struct{}{}`)
+return Failure(Exclude{`+fmt.Sprintf("%q", n.Argument.String())+`}), struct{}{}`)
 }
 func (n Not) String() string {
 	return "not (" + n.Argument.String() + ")"
@@ -157,7 +185,7 @@ type And struct {
 	Argument Peg
 }
 
-func (and And) Template(state *State) string {
+func (and And) Template(state *State, self string) string {
 	return state.DefineIn(and.Argument, `
 check, value := %s(input, here)
 if !check.Ok {
@@ -181,7 +209,7 @@ type Root struct {
 	Type string
 }
 
-func (root Root) Template(state *State) string {
+func (root Root) Template(state *State, self string) string {
 	return `/* illegal - roots should not be generated */`
 }
 func (root Root) String() string {
@@ -200,7 +228,7 @@ type Go struct {
 	Expression string
 }
 
-func (g Go) Template(state *State) string {
+func (g Go) Template(state *State, self string) string {
 	return state.DefineIn(g.Argument, `
 check, value := %s(input, here)
 if !check.Ok {
@@ -213,7 +241,7 @@ answer := func(arg `+g.Argument.TypeName()+`) `+g.Returns+` {
 return check, answer`)
 }
 func (g Go) String() string {
-	return fmt.Sprintf("%s go { %s }", g.Argument.TypeName(), g.Returns)
+	return fmt.Sprintf("%s go %s { %s }", g.Argument.String(), g.Returns, g.Expression)
 }
 func (g Go) TypeName() string {
 	return g.Returns
@@ -226,15 +254,15 @@ type Regex struct {
 	Regex string
 }
 
-func (r Regex) Template(state *State) string {
+func (r Regex) Template(state *State, self string) string {
 	return fmt.Sprintf(`
-match := parser.resource%sRegex.Index(input[here:])
+match := parser.resource%sRegex.FindIndex(input[here:])
 if match == nil || match[0] != 0 {
-	return Failure(Expected{Token: "regex " + %q})
+	return Failure(Expected{Token: "regex " + %q}), ""
 }
 end := match[1]
 return Success(here + end), string(input[here : here+end])
-`, state.Current, r.Regex)
+`, self, r.Regex)
 }
 func (r Regex) String() string {
 	return fmt.Sprintf("regex %q", r.Regex)
@@ -247,4 +275,50 @@ func (r Regex) Context() Context {
 		Imports:   []string{"regexp"},
 		Resources: []Resource{{Name: "Regex", Type: "*regexp.Regexp", Expression: fmt.Sprintf(`regexp.MustCompile(%q)`, r.Regex)}},
 	}
+}
+
+type Contents struct {
+	Argument Peg
+}
+
+func (c Contents) Template(state *State, self string) string {
+	return state.DefineIn(c.Argument, `
+check, _ := %s(input, here)
+if check.Ok {
+	return check, string(input[here:check.At])
+}
+return check, ""
+`)
+}
+func (c Contents) String() string {
+	return "contents { " + c.Argument.String() + " }"
+}
+func (c Contents) TypeName() string {
+	return "string"
+}
+func (c Contents) Context() Context {
+	return Context{}
+}
+
+type Optional struct {
+	Argument Peg
+}
+
+func (o Optional) Template(state *State, self string) string {
+	return state.DefineIn(o.Argument, `
+check, value := %s(input, here)
+if check.Ok {
+	return check, &value
+}
+return Success(here), nil
+`)
+}
+func (o Optional) String() string {
+	return "(" + o.Argument.String() + ")?"
+}
+func (o Optional) TypeName() string {
+	return "*" + o.Argument.TypeName()
+}
+func (o Optional) Context() Context {
+	return Context{}
 }
